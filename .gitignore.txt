@@ -1,0 +1,43 @@
+# STM32CubeIDE/Eclipse specific files
+.metadata/
+.settings/
+.project
+.cproject.bak
+.mxproject
+.mxversion
+*.launch
+
+# Build artifacts
+Debug/
+Release/
+build/
+*.bin
+*.hex
+*.elf
+*.map
+*.lst
+*.su
+*.o
+*.d
+
+# CubeMX backup and cache files (optional, can be useful for history)
+*.ioc.backup*
+.stm32cubeide_cache/
+
+# Operating System and Editor files
+.DS_Store
+.vscode/
+Thumbs.db
+ehthumbs.db
+[Oo]bject/
+[Bb]in/
+[Dd]ebug/
+[Rr]elease/
+*.lib
+*.obj
+*.sdf
+*.suo
+*.user
+*.cas
+*.project
+*.solution
