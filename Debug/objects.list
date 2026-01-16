@@ -3,3 +3,4 @@
 "./Src/sysmem.o"
 "./Startup/startup_stm32f439zitx.o"
 "./drivers/Src/stm32f439xx_gpio_driver.o"
+"./drivers/Src/stm32f439xx_spi_driver.o"
