@@ -43,8 +43,8 @@
 #define SPI_CPHA_SECOND					1
 
 // SOFTWARE SLAVE MANAGEMENT
-#define SPI_SSM_HW						0
-#define SPI_SSM_SW						1
+#define SPI_SSM_DI						0
+#define SPI_SSM_EN						1
 
 // SPI related status flag definition
 #define SPI_TXE_FLAG					( 1 << SPI_SR_TXE )
@@ -116,6 +116,7 @@ void SPI_IRQHandling(SPI_Handle_t *pHandle);
  * other Peripheral Control APIs
  */
 uint8_t SPI_GetFlagStatus(SPI_RegDef_t *pSPIx, uint8_t FlagName);
-
+void SPI_PeripheralControl(SPI_RegDef_t *pSPIx, uint8_t ENOrDi);
+void SPI_SSIConfig(SPI_RegDef_t *pSPIx, uint8_t ENOrDi);
 
 #endif /* INC_STM32F439XX_SPI_DRIVER_H_ */

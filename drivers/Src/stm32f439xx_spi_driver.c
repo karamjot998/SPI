@@ -49,6 +49,9 @@ void SPI_PeriClockControl(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
 void SPI_Init(SPI_Handle_t *pSPIHandle){
 	uint32_t tmpReg = 0;
 
+	// enabling	SPI peripheral clock control
+	SPI_PeriClockControl(pSPIHandle->pSPIx, ENABLE);
+
 	// configuring device as master or slave
 	tmpReg |= ( pSPIHandle->SPIConfig.SPI_DeviceMode << SPI_CR1_MSTR );
 
@@ -159,3 +162,19 @@ void SPI_IRQHandling(SPI_Handle_t *pHandle){
 /*
  * other Peripheral Control APIs
  */
+void SPI_PeripheralControl(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
+	if(ENOrDi == ENABLE){
+		pSPIx->CR1 |= ( 1 << SPI_CR1_SPE);
+	}else{
+		pSPIx->CR1 &= ~( 1 << SPI_CR1_SPE);
+	}
+}
+
+
+void SPI_SSIConfig(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
+	if(ENOrDi == ENABLE){
+		pSPIx->CR1 |= ( 1 << SPI_CR1_SSI);
+	}else{
+		pSPIx->CR1 &= ~( 1 << SPI_CR1_SSI);
+	}
+}
