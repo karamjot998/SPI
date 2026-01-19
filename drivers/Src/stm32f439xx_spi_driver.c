@@ -85,7 +85,7 @@ void SPI_Init(SPI_Handle_t *pSPIHandle){
 	// configure hardware/software slave management
 	tmpReg |= ( pSPIHandle->SPIConfig.SPI_SSM << SPI_CR1_SSM );
 
-	pSPIHandle->pSPIx->CR1 |= tmpReg;
+	pSPIHandle->pSPIx->CR1 = tmpReg;
 }
 
 void SPI_DedInit(SPI_RegDef_t *pSPIx){
@@ -104,8 +104,8 @@ void SPI_DedInit(SPI_RegDef_t *pSPIx){
 		}
 }
 
-uint8_t SPI_GetFlagStatus(SPI_RegDef_t *pSPIx, uint8_t FlagName){
-	if (pSPIx->SR & ( 1 << FlagName)){
+uint8_t SPI_GetFlagStatus(SPI_RegDef_t *pSPIx, uint32_t FlagName){
+	if (pSPIx->SR & (FlagName)){
 		return FLAG_SET;
 	}
 	return FLAG_RESET;
@@ -126,7 +126,7 @@ void SPI_SendData(SPI_RegDef_t *pSPIx, uint8_t *pTxBuffer, uint32_t len){
 			pSPIx->DR = *(( uint16_t *)pTxBuffer);
 			len--;
 			len--;
-			(uint16_t*)pTxBuffer++;
+			pTxBuffer+=2;
 		}else{
 			pSPIx->DR = *pTxBuffer;
 			len--;
@@ -137,7 +137,23 @@ void SPI_SendData(SPI_RegDef_t *pSPIx, uint8_t *pTxBuffer, uint32_t len){
 
 void SPI_ReceiveData(SPI_RegDef_t *pSPIx,  uint8_t *pRxBuffer, uint32_t len){
 
+	while (len > 0){
+		// wait until TXE is set
+		while( 	SPI_GetFlagStatus(pSPIx, SPI_RXNE_FLAG) == FLAG_SET);
 
+		// check the DFF bit in cr1
+		if( pSPIx->CR1 & ( 1 << SPI_CR1_DFF ) ){
+			// 16 bit DFF
+			*(( uint16_t *)pRxBuffer) = pSPIx->DR;
+			len--;
+			len--;
+			pRxBuffer+=2;
+		}else{
+			*pRxBuffer = pSPIx->DR;
+			len--;
+			pRxBuffer++;
+		}
+	}
 }
 
 
@@ -176,5 +192,14 @@ void SPI_SSIConfig(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
 		pSPIx->CR1 |= ( 1 << SPI_CR1_SSI);
 	}else{
 		pSPIx->CR1 &= ~( 1 << SPI_CR1_SSI);
+	}
+}
+
+
+void SPI_SSOEConfig(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
+	if(ENOrDi == ENABLE){
+		pSPIx->CR2 |= ( 1 << SPI_CR2_SSOE);
+	}else{
+		pSPIx->CR2 &= ~( 1 << SPI_CR2_SSOE);
 	}
 }

@@ -50,6 +50,8 @@ void SPI2_GPIO_Init(void){
 	//SPIPins.GPIO_PinConfig.GPIO_PinNumber = GIO_PIN_NO_12;
 	//GPIO_Init(&SPIPins);
 
+	GPIO_PeriClockControl(GPIOB, ENABLE);
+
 	//SCLK
 	SPIPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_13;
 	GPIO_Init(&SPIPins);
