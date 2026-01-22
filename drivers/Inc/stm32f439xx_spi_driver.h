@@ -78,6 +78,12 @@ typedef struct {
 typedef struct {
 	SPI_RegDef_t	*pSPIx;			// holds the base address of spi register
 	SPI_Config_t	SPIConfig;
+	uint8_t			*pTxBuffer; // to store the app Tx Buffer address
+	uint8_t			*RxBuffer; // to store the Rx buffer address
+	uint32_t		TxLen;
+	uint32_t		RxLen;
+	uint8_t			TxState;
+	uint8_t			RxState;
 }SPI_Handle_t;
 
 
@@ -99,10 +105,16 @@ void SPI_Init(SPI_Handle_t *pSPIHandle);
 void SPI_DedInit(SPI_RegDef_t *pSPIx);
 
 /*
- * 	data send and Receive
+ * 	data send and Receive	BLOCK
  */
 void SPI_SendData(SPI_RegDef_t *pSPIx, uint8_t *pTxBuffer, uint32_t len);
 void SPI_ReceiveData(SPI_RegDef_t *pSPIx,  uint8_t *pRxBuffer, uint32_t len);
+
+/*
+ * 	data send and Receive	INTERRUPT
+ */
+void SPI_SendData_IT(SPI_Handle_t *pSPIHandle, uint8_t *pTxBuffer, uint32_t len);
+void SPI_ReceiveData_IT(SPI_Handle_t *pSPIx,  uint8_t *pRxBuffer, uint32_t len);
 
 
 /*

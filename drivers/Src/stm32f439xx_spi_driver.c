@@ -139,7 +139,7 @@ void SPI_ReceiveData(SPI_RegDef_t *pSPIx,  uint8_t *pRxBuffer, uint32_t len){
 
 	while (len > 0){
 		// wait until TXE is set
-		while( 	SPI_GetFlagStatus(pSPIx, SPI_RXNE_FLAG) == FLAG_SET);
+		while( 	SPI_GetFlagStatus(pSPIx, SPI_RXNE_FLAG) == FLAG_RESET);
 
 		// check the DFF bit in cr1
 		if( pSPIx->CR1 & ( 1 << SPI_CR1_DFF ) ){
@@ -158,19 +158,77 @@ void SPI_ReceiveData(SPI_RegDef_t *pSPIx,  uint8_t *pRxBuffer, uint32_t len){
 
 
 /*
+ * 	data send and Receive	INTERRUPT
+ */
+void SPI_SendData_IT(SPI_Handle_t *pSPIHandle, uint8_t *pTxBuffer, uint32_t len){
+	// 1. save the tx buffer addres and len information in some global variable
+
+	// 2. mark the SPI state as bsy in transmition so that no other code can take over same SPI peripheral until transmission is over
+
+	// 3. enable the txeie control bit to get information whenever TXE flag is et in SR
+
+	// data transmission will e handled by the ISR code
+}
+void SPI_ReceiveData_IT(SPI_Handle_t *pSPIx,  uint8_t *pRxBuffer, uint32_t len);
+
+
+
+/*
  * IRQ Configuration and ISR handling
  */
 void SPI_IRQInterruptConfig(uint8_t IRQNum, uint8_t ENOrDI){
+	if( ENOrDI == ENABLE ){
 
+		if(IRQNum <= 31){
 
+			*NVIC_ISER0 |= ( 1 << IRQNum);
+
+		}else if(IRQNum <= 63){
+
+			*NVIC_ISER1 |= ( 1 << (IRQNum % 32));
+		}else if(IRQNum <= 95){
+
+			*NVIC_ISER2 |= ( 1 << (IRQNum % 32));
+
+		}
+	}else{
+
+		if(IRQNum <= 31){
+
+			*NVIC_ICER0 |= ( 1 << IRQNum);
+
+		}else if(IRQNum <= 63){
+
+			*NVIC_ICER1 |= ( 1 << (IRQNum % 32));
+
+		}else if(IRQNum <= 95){
+
+			*NVIC_ICER2 |= ( 1 << (IRQNum % 32));
+
+		}
+	}
 }
 
 void SPI_IRQPriorityConfig(uint8_t IRQNum, uint32_t IRQPriority){
+	// finding the ipr number
+	uint8_t iprx = IRQNum / 4;
+	uint8_t iprx_section = IRQNum % 4;
 
+	uint8_t shift = (8 * iprx_section) + (8 - _NVIC_PRIO_BITS);
+
+	NVIC_PR_BASE_ADDR[iprx] &= ~(0xFF << (8 * iprx_section));   // clear old priority
+
+	NVIC_PR_BASE_ADDR[iprx] |= (IRQPriority << shift);          // set new priority
 
 }
 
 void SPI_IRQHandling(SPI_Handle_t *pHandle){
+	// clear the pending bit
+	//if(EXTI->PR & ( 1 << PinNum)){
+
+			// clear
+	//	EXTI->PR |= (1 << PinNum);
+	//}
 
 
 }
