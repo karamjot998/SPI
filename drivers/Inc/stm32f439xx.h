@@ -1,8 +1,8 @@
 #ifndef INC_STM32F439XX_H_
 #define INC_STM32F439XX_H_
 
+#include <stddef.h>
 #include <stdint.h>
-
 #define _vo volatile
 
 // PRIORITY BITS FOR NVIC
@@ -10,6 +10,7 @@
 
 /*
  *		ARM CORTEX M4 PROCESSOR NVIC ISERx REGISTOR
+ *		INTERRUPT SET-ENABLE REGISTER
  */
 #define NVIC_ISER0					(( _vo uint32_t *)0xE000E100U)
 #define NVIC_ISER1					(( _vo uint32_t *)0xE000E104U)
@@ -19,6 +20,7 @@
 
 /*
  * 		ARM CORTEX M4 PROCESSOR NVIC ICEx REGISTOR
+ * 		INTERRUPT CLEAR-ENABLE REGISTER
  */
 #define NVIC_ICER0					(( _vo uint32_t *)0xE000E180U)
 #define NVIC_ICER1					(( _vo uint32_t *)0xE000E184U)
@@ -401,6 +403,9 @@ typedef struct {
 #define IRQ_NO_EXTI4		10
 #define IRQ_NO_EXTI9_5		23
 #define IRQ_NO_EXTI15_10	40
+#define IRQ_NO_SPI1			35
+#define IRQ_NO_SPI2			36
+#define IRQ_NO_SPI3			51
 
 /*
  * NVIC PRIORITY MACROS

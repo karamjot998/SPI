@@ -10,6 +10,11 @@
 #include "stm32f439xx_spi_driver.h"
 
 
+static void spi_txe_interrupt_handle(SPI_Handle_t *pHandle);
+static void spi_rxe_interrupt_handle(SPI_Handle_t *pHandle);
+static void spi_ovr_err_interrupt_handle(SPI_Handle_t *pHandle);
+
+
 void SPI_PeriClockControl(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
 
 	if(ENOrDi == ENABLE){
@@ -160,16 +165,36 @@ void SPI_ReceiveData(SPI_RegDef_t *pSPIx,  uint8_t *pRxBuffer, uint32_t len){
 /*
  * 	data send and Receive	INTERRUPT
  */
-void SPI_SendData_IT(SPI_Handle_t *pSPIHandle, uint8_t *pTxBuffer, uint32_t len){
-	// 1. save the tx buffer addres and len information in some global variable
-
-	// 2. mark the SPI state as bsy in transmition so that no other code can take over same SPI peripheral until transmission is over
-
-	// 3. enable the txeie control bit to get information whenever TXE flag is et in SR
-
+uint8_t SPI_SendData_IT(SPI_Handle_t *pSPIHandle, uint8_t *pTxBuffer, uint32_t len){
+	uint8_t state = pSPIHandle->TxState;
+	if(state != SPI_BUSY_IN_TX){
+		// 1. save the tx buffer addres and len information in some global variable
+		pSPIHandle->pTxBuffer = pTxBuffer;
+		pSPIHandle->TxLen = len;
+		// 2. mark the SPI state as bsy in transmition so that no other code can take over same SPI peripheral until transmission is over
+		pSPIHandle->TxState = SPI_BUSY_IN_TX;
+		// 3. enable the txeie control bit to get information whenever TXE flag is et in SR
+		pSPIHandle->pSPIx->CR2 |= ( 1 << SPI_CR2_TXEIE );
+	}
 	// data transmission will e handled by the ISR code
+	return state;
 }
-void SPI_ReceiveData_IT(SPI_Handle_t *pSPIx,  uint8_t *pRxBuffer, uint32_t len);
+
+
+uint8_t SPI_ReceiveData_IT(SPI_Handle_t *pSPIHandle,  uint8_t *pRxBuffer, uint32_t len){
+	uint8_t state = pSPIHandle->RxState;
+	if(state != SPI_BUSY_IN_RX){
+		// 1. save the tx buffer addres and len information in some global variable
+		pSPIHandle->pRxBuffer = pRxBuffer;
+		pSPIHandle->RxLen = len;
+		// 2. mark the SPI state as bsy in transmition so that no other code can take over same SPI peripheral until transmission is over
+		pSPIHandle->RxState = SPI_BUSY_IN_RX;
+		// 3. enable the txeie control bit to get information whenever TXE flag is et in SR
+		pSPIHandle->pSPIx->CR2 |= ( 1 << SPI_CR2_RXNEIE );
+	}
+	// data transmission will e handled by the ISR code
+	return state;
+}
 
 
 
@@ -223,14 +248,32 @@ void SPI_IRQPriorityConfig(uint8_t IRQNum, uint32_t IRQPriority){
 }
 
 void SPI_IRQHandling(SPI_Handle_t *pHandle){
-	// clear the pending bit
-	//if(EXTI->PR & ( 1 << PinNum)){
+	// check for Txe
+	uint8_t tmp1, tmp2;
+	tmp1 = pHandle->pSPIx->SR & ( 1 << SPI_SR_TXE);
+	tmp2 = pHandle->pSPIx->CR2 & ( 1 << SPI_CR2_TXEIE);
 
-			// clear
-	//	EXTI->PR |= (1 << PinNum);
-	//}
+	if ( tmp1 && tmp2){
+		// handle txe
+		spi_txe_interrupt_handle(pHandle);
+	}
 
+	tmp1 = pHandle->pSPIx->SR & ( 1 << SPI_SR_RXNE);
+	tmp2 = pHandle->pSPIx->CR2 & ( 1 << SPI_CR2_RXNEIE);
 
+	if ( tmp1 && tmp2){
+		// handle txe
+		spi_rxe_interrupt_handle(pHandle);
+	}
+
+	// check for OVR Flag
+	tmp1 = pHandle->pSPIx->SR & ( 1 << SPI_SR_OVR );
+	tmp2 = pHandle->pSPIx->CR2 & ( 1 << SPI_CR2_ERRIE );
+
+	if ( tmp1 && tmp2){
+		// handle txe
+		spi_ovr_err_interrupt_handle(pHandle);
+	}
 }
 
 /*
@@ -244,7 +287,10 @@ void SPI_PeripheralControl(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
 	}
 }
 
-
+/*
+ * SPI Slave Select (SSI) Control
+ * Used when software slave management (SSM = 1) is enabled
+ */
 void SPI_SSIConfig(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
 	if(ENOrDi == ENABLE){
 		pSPIx->CR1 |= ( 1 << SPI_CR1_SSI);
@@ -253,11 +299,98 @@ void SPI_SSIConfig(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
 	}
 }
 
-
+/*
+ * SPI Slave Select Output Enable (SSOE) Control
+ * Used when hardware slave management (SSM = 0) is enabled
+ */
 void SPI_SSOEConfig(SPI_RegDef_t *pSPIx, uint8_t ENOrDi){
 	if(ENOrDi == ENABLE){
 		pSPIx->CR2 |= ( 1 << SPI_CR2_SSOE);
 	}else{
 		pSPIx->CR2 &= ~( 1 << SPI_CR2_SSOE);
 	}
+}
+
+// helper function implementation
+static void spi_txe_interrupt_handle(SPI_Handle_t *pSPIHandle){
+	// check the DFF bit in cr1
+	if( pSPIHandle->pSPIx->CR1 & ( 1 << SPI_CR1_DFF ) ){
+		// 16 bit DFF
+		pSPIHandle->pSPIx->DR = *(( uint16_t *)pSPIHandle->pTxBuffer);
+		pSPIHandle->TxLen--;
+		pSPIHandle->TxLen--;
+		pSPIHandle->pTxBuffer+=2;
+	}else{
+		pSPIHandle->pSPIx->DR = *pSPIHandle->pTxBuffer;
+		pSPIHandle->TxLen--;
+		pSPIHandle->pTxBuffer++;
+	}
+
+	if (! pSPIHandle->TxLen){
+		// close spi communication is TxLen is 0
+		// inform application that Tx is over
+		// prevent interupts from txe flag
+		SPI_CloseTransmission(pSPIHandle);
+		SPI_ApplicationEventCallback(pSPIHandle, SPI_EVENT_TX_CMPLT);
+	}
+}
+
+
+static void spi_rxe_interrupt_handle(SPI_Handle_t *pSPIHandle){
+
+	if( pSPIHandle->pSPIx->CR1 & ( 1 << SPI_CR1_DFF ) ){
+		// 16 bit DFF
+		*(( uint16_t *)pSPIHandle->pRxBuffer) = pSPIHandle->pSPIx->DR;
+		pSPIHandle->RxLen--;
+		pSPIHandle->RxLen--;
+		pSPIHandle->pRxBuffer+=2;
+	}else{
+		*pSPIHandle->pRxBuffer = pSPIHandle->pSPIx->DR;
+		pSPIHandle->RxLen--;
+		pSPIHandle->pRxBuffer++;
+	}
+
+	if (! pSPIHandle->TxLen){
+		// close spi communication is TxLen is 0
+		// inform application that Tx is over
+		// prevent interupts from txe flag
+		SPI_CloseReception(pSPIHandle);
+		SPI_ApplicationEventCallback(pSPIHandle, SPI_EVENT_RX_CMPLT);
+	}
+
+}
+
+static void spi_ovr_err_interrupt_handle(SPI_Handle_t *pSPIHandle){
+
+	// clear the ovr flag
+	if( pSPIHandle->TxState != SPI_BUSY_IN_TX ){
+		SPI_ClearOVRFlag(pSPIHandle->pSPIx);
+	}
+	// Inform the Application
+
+	SPI_ApplicationEventCallback(pSPIHandle, SPI_EVENT_OVR_ERR);
+
+}
+
+
+void SPI_ClearOVRFlag(SPI_RegDef_t *pSPIx){
+	uint8_t temp;
+	temp = pSPIx->DR;
+	temp = pSPIx->SR;
+}
+
+void SPI_CloseTransmission(SPI_Handle_t *pSPIHandle){
+	pSPIHandle->pSPIx->CR2 &= ~( 1 << SPI_CR2_TXEIE );
+	pSPIHandle->pTxBuffer = NULL;
+	pSPIHandle->TxLen = 0;
+	pSPIHandle->TxState = SPI_READY;
+
+}
+
+void SPI_CloseReception(SPI_Handle_t *pSPIHandle){
+	pSPIHandle->pSPIx->CR2 &= ~( 1 << SPI_CR2_RXNEIE );
+	pSPIHandle->pRxBuffer = NULL;
+	pSPIHandle->RxLen = 0;
+	pSPIHandle->RxState = SPI_READY;
+
 }
